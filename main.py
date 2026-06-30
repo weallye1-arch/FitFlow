@@ -7,4 +7,4 @@ def home():
     return {
         "app": "FitFlow",
         "message": "FitFlow is running!"
-    
+    }
