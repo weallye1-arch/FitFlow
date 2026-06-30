@@ -1,11 +1,18 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import json
+import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
+load_dotenv()
 
 app = FastAPI()
 
-# 预设的训练方案库，先用最简单的形式存起来
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 plans = {
     "减脂": {
         "plan": "有氧+全身循环训练，每周4-5次，每次40分钟",
@@ -34,6 +41,21 @@ def get_plan(goal: str = "减脂"):
         data = plans[goal]
     else:
         data = {"error": f"暂不支持目标'{goal}'，可选：减脂、增肌、塑形"}
+
+    if "error" not in data:
+        supabase.table("workouts").insert({
+            "goal": goal,
+            "plan": data["plan"],
+            "tips": data["tips"]
+        }).execute()
+
     content = json.dumps(data, ensure_ascii=False)
     return JSONResponse(content=json.loads(content), media_type="application/json; charset=utf-8")
+
+@app.get("/history")
+def get_history():
+    result = supabase.table("workouts").select("*").order("created_at", desc=True).execute()
+    content = json.dumps(result.data, ensure_ascii=False)
+    return JSONResponse(content=json.loads(content), media_type="application/json; charset=utf-8")
+
 
